@@ -284,6 +284,7 @@ func syncConfig(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	log.Println("SimApp - By CDAC")
 	log.Println("SimApp started")
 	configMsgChan = make(chan configMessage, 100)
 	var subProvisionEndpt SubProvisionEndpt
