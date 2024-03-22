@@ -12,26 +12,6 @@ on:
       - main
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Build
-        run: go build
-
-  docker-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: make docker-build
-
   lint:
     name: lint
     runs-on: ubuntu-latest
@@ -48,7 +28,75 @@ jobs:
           version: latest
           args: -v --config ./.golangci.yml
 
+  license-check:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: reuse lint
+        uses: fsfe/reuse-action@v3
+
+  fossa-check:
+    needs: license-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: FOSSA scan
+        uses: fossa-contrib/fossa-action@v3
+        with:
+          fossa-api-key: 0c3bbcdf20e157bbd487dae173751b28
+
+  build:
+    needs: fossa-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Build
+        run: go build
+
+  unit-tests:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Unit tests
+        run: go test ./...
+
+  docker-build:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_REGISTRY: "docker.io/"
+      DOCKER_REPOSITORY: "jayaramrcdac/"
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: docker/login-action@v3.1.0
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_LOGIN }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build Docker image
+        run: make docker-build
+
+      - name: Push Docker image
+        run: make docker-push
+  
   hadolint:
+    needs: docker-build
     name: hadolint
     runs-on: ubuntu-latest
 
@@ -63,33 +111,10 @@ jobs:
         with:
           dockerfile: Dockerfile
           ignore: DL3008,DL3018
-
-  license-check:
+  
+  docker-push:
+    needs: hadolint
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-
-      - name: reuse lint
-        uses: fsfe/reuse-action@v3
-
-  fossa-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: FOSSA scan
-        uses: fossa-contrib/fossa-action@v3
-        with:
-          fossa-api-key: 0c3bbcdf20e157bbd487dae173751b28
-
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Unit tests
-        run: go test ./...
