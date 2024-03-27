@@ -286,6 +286,7 @@ func syncConfig(w http.ResponseWriter, req *http.Request) {
 func main() {
 	log.Println("SimApp - By CDAC")
 	log.Println("SimApp started")
+	log.Println("27-03-2024")
 	configMsgChan = make(chan configMessage, 100)
 	var subProvisionEndpt SubProvisionEndpt
 	var subProxyEndpt SubProxyEndpt
